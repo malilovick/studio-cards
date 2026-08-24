@@ -1,0 +1,48 @@
+name: Release & Deploy (Main Branch)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check (TypeScript)
+        run: npm run lint
+
+      - name: Build production bundle
+        run: npm run build
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Create Production Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-cards-production-dist
+          path: dist/
+          retention-days: 30
+
+      # Optional: Firebase Hosting Deploy (uncomment when Firebase credentials secret is added)
+      # - name: Deploy to Firebase Hosting
+      #   uses: FirebaseExtended/action-hosting-deploy@v0
+      #   with:
+      #     repoToken: '${{ secrets.GITHUB_TOKEN }}'
+      #     firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_STUDIO_CARDS }}'
+      #     channelId: live
+      #     projectId: booming-beaker-wlcf1
