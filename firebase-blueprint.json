@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "AuthorizedUser": {
+      "title": "Authorized User",
+      "description": "User email permitted to access the application",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Google email address" },
+        "name": { "type": "string", "description": "Display name" },
+        "photoURL": { "type": "string", "description": "Avatar URL" },
+        "role": { "type": "string", "enum": ["admin", "editor", "viewer"] },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "addedBy": { "type": "string" },
+        "addedAt": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["email", "role", "status"]
+    },
+    "AccessRequest": {
+      "title": "Access Request",
+      "description": "Request submitted by unauthorized user to gain access",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["email", "createdAt", "status"]
+    },
+    "Deck": {
+      "title": "Therapeutic Card Deck",
+      "description": "Complete deck document stored in Firestore owned by a user and optionally shared with others",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "deckTitle": { "type": "string" },
+        "collectionName": { "type": "string" },
+        "deckSubtitle": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "ownerId": { "type": "string", "description": "Firebase Auth UID of the owner" },
+        "ownerEmail": { "type": "string", "description": "Google email of the owner" },
+        "ownerName": { "type": "string", "description": "Name of the owner" },
+        "sharedWithEmails": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of user emails allowed to view this deck"
+        },
+        "shareMode": {
+          "type": "string",
+          "enum": ["private", "restricted", "all_authorized"],
+          "description": "Sharing visibility mode"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["published", "unpublished", "draft", "pending", "scheduled", "trash", "auto_draft"],
+          "description": "Publication status of the deck"
+        },
+        "scheduledAt": { "type": "string", "description": "Scheduled publication ISO date time" },
+        "publishedAt": { "type": "string" },
+        "trashedAt": { "type": "string" },
+        "reviewerNotes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "deckTitle", "ownerEmail"]
+    }
+  },
+  "firestore": {
+    "/authorized_users/{userEmail}": {
+      "entity": "AuthorizedUser",
+      "description": "Whitelist collection indexed by lowercase email"
+    },
+    "/access_requests/{requestId}": {
+      "entity": "AccessRequest",
+      "description": "Access requests sent by users awaiting approval"
+    },
+    "/decks/{deckId}": {
+      "entity": "Deck",
+      "description": "Saved therapeutic decks"
+    }
+  }
+}

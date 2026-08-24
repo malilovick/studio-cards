@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwnerEmail() {
+      return isAuthenticated() && 
+        (request.auth.token.email == 'vianallmarcos@gmail.com' ||
+         request.auth.token.email == 'malilovick@gmail.com' ||
+         request.auth.token.email == 'lucianacastroterapeuta@gmail.com');
+    }
+
+    function isAuthorizedUser() {
+      return isAuthenticated() && (
+        isOwnerEmail() ||
+        exists(/databases/$(database)/documents/authorized_users/$(request.auth.token.email))
+      );
+    }
+
+    function isAdmin() {
+      return isOwnerEmail() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/authorized_users/$(request.auth.token.email)) &&
+        get(/databases/$(database)/documents/authorized_users/$(request.auth.token.email)).data.role == 'admin'
+      );
+    }
+
+    // Authorized users list:
+    // Any authenticated user can read to check authorization
+    // Only admins / owner can create, update or delete
+    match /authorized_users/{userEmail} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isOwnerEmail();
+    }
+
+    // Access requests:
+    // Any logged in user can submit a request with their own email
+    // Admins can read, update, or delete
+    match /access_requests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.email == request.auth.token.email;
+      allow read, update, delete: if isAdmin() || (isAuthenticated() && resource.data.email == request.auth.token.email);
+    }
+
+    // Decks collection:
+    // Deck belongs to an owner, and can be shared with specific users in view-only format or published publicly
+    match /decks/{deckId} {
+      // 1. Read access:
+      // - Public visitor can read if deck is 'published' or 'scheduled' with scheduledAt passed
+      // - Authorized users can read their own decks (even draft, pending, trash, unpublished)
+      // - Authorized users can read decks shared with them or with all authorized colleagues (if not in trash)
+      // - Admins can read all decks
+      allow read: if (
+        resource.data.status == 'published'
+      ) || (
+        resource.data.status == 'scheduled' &&
+        resource.data.scheduledAt != null &&
+        resource.data.scheduledAt <= request.time.toMillis()
+      ) || (
+        isAuthorizedUser() && (
+          resource == null ||
+          resource.data.ownerEmail == request.auth.token.email ||
+          resource.data.authorEmail == request.auth.token.email ||
+          resource.data.ownerId == request.auth.uid ||
+          (resource.data.status != 'trash' && (
+            resource.data.shareMode == 'all_authorized' ||
+            (resource.data.sharedWithEmails != null && request.auth.token.email in resource.data.sharedWithEmails)
+          )) ||
+          isAdmin()
+        )
+      );
+
+      // 2. Create access: authorized users creating under their own email/uid or admin
+      allow create: if isAuthorizedUser() && (
+        request.resource.data.ownerEmail == request.auth.token.email ||
+        request.resource.data.authorEmail == request.auth.token.email ||
+        request.resource.data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+
+      // 3. Update access: owner or admin
+      allow update: if isAuthorizedUser() && (
+        resource.data.ownerEmail == request.auth.token.email ||
+        resource.data.authorEmail == request.auth.token.email ||
+        resource.data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+
+      // 4. Delete access: owner or admin
+      allow delete: if isAuthorizedUser() && (
+        resource.data.ownerEmail == request.auth.token.email ||
+        resource.data.authorEmail == request.auth.token.email ||
+        resource.data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // User settings / profiles:
+    match /user_profiles/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}

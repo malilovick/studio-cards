@@ -1,0 +1,8 @@
+{
+  "firestore": {
+    "databaseId": "ai-studio-geradordecartast-c25c5726-2dc2-42c2-9994-96d5c684c9ec",
+    "rules": "firestore.rules",
+    "edition": "ENTERPRISE",
+    "dataAccessMode": "FIRESTORE_NATIVE"
+  }
+}
